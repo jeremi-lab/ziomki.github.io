@@ -1,0 +1,179 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Strona Ziomków</title>
+<script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    margin-top: 50px;
+    background-color: #f0f0f0;
+  }
+  h1 {
+    color: #333;
+  }
+  .rizz {
+    margin: 20px 0;
+    font-style: italic;
+  }
+  form {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    display: inline-block;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    max-width: 400px;
+    width: 90%;
+  }
+  label {
+    display: block;
+    margin: 10px 0;
+    cursor: pointer;
+    text-align: left;
+  }
+  input[type="radio"] {
+    margin-right: 10px;
+  }
+  button {
+    background: #5865F2;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 15px;
+    font-size: 16px;
+    width: 100%;
+  }
+  button:hover {
+    background: #4752C4;
+  }
+  button:disabled {
+    background: #cccccc;
+    cursor: not-allowed;
+  }
+  .h-captcha {
+    display: flex;
+    justify-content: center;
+    margin: 15px 0;
+  }
+  .error {
+    color: red;
+    margin: 10px 0;
+  }
+</style>
+</head>
+<body>
+<h1>STRONA W PRZYGOTOWANIU!</h1>
+<div class="rizz">wróć tu później może będzie gotowa :)</div>
+
+<form id="discordForm">
+  <label>
+    <input type="radio" name="ziomek" value="Jestem z ziomków"> Jestem z ziomków
+  </label>
+  <label>
+    <input type="radio" name="ziomek" value="Nie jestem z ziomków"> Nie jestem z ziomków
+  </label>
+  <div class="h-captcha" data-sitekey="ES_0e7482a52f9549ef867eb82a1c94a20f"></div>
+  <div id="error" class="error"></div>
+  <button type="submit" id="submitBtn">Wyślij</button>
+</form>
+
+<script>
+  // Rate limiting - 1 submission per minute
+  const RATE_LIMIT_TIME = 60000; // 60 seconds
+  let lastSubmissionTime = 0;
+  
+  document.getElementById('discordForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const errorElement = document.getElementById('error');
+    errorElement.textContent = '';
+    
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    
+    try {
+      // Check if CAPTCHA is completed
+      const captchaResponse = hcaptcha.getResponse();
+      if (!captchaResponse) {
+        errorElement.textContent = 'Proszę potwierdzić, że nie jesteś botem!';
+        submitBtn.disabled = false;
+        return;
+      }
+      
+      // Check rate limit
+      const now = Date.now();
+      if (now - lastSubmissionTime < RATE_LIMIT_TIME) {
+        const timeLeft = Math.ceil((RATE_LIMIT_TIME - (now - lastSubmissionTime)) / 1000);
+        errorElement.textContent = `Proszę poczekać ${timeLeft} sekund przed następnym wysłaniem.`;
+        submitBtn.disabled = false;
+        return;
+      }
+      
+      const selectedOption = document.querySelector('input[name="ziomek"]:checked');
+      
+      if (!selectedOption) {
+        errorElement.textContent = 'Proszę wybrać opcję!';
+        submitBtn.disabled = false;
+        return;
+      }
+      
+      // Verify CAPTCHA with your server (recommended for production)
+      // For this example, we'll skip server-side verification
+      
+      // Replace with your actual Discord webhook URL
+      const WEBHOOK_URL = 'https://discord.com/api/webhooks/1353727979930386574/NQHv8C2QNiF-K-EuitkYxLoINQi5VSnPmaZo1cpwn86ETG8zThTz1pzyk8xeqjlwX9zd';
+      
+      const data = {
+        username: "Strona Ziomków",
+        content: `Nowy wybór: ${selectedOption.value}`,
+        embeds: [{
+          title: "Wybór użytkownika",
+          description: selectedOption.value,
+          color: 0x5865F2,
+          timestamp: new Date().toISOString(),
+          fields: [
+            {
+              name: "CAPTCHA",
+              value: "Potwierdzony",
+              inline: true
+            }
+          ]
+        }]
+      };
+
+      const response = await fetch(WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+      });
+      
+      if (response.ok) {
+        alert('Wybór wysłany do Discord!');
+        document.getElementById('discordForm').reset();
+        hcaptcha.reset();
+        lastSubmissionTime = Date.now();
+        
+        // Disable button temporarily
+        submitBtn.disabled = true;
+        setTimeout(() => {
+          submitBtn.disabled = false;
+        }, RATE_LIMIT_TIME);
+      } else {
+        errorElement.textContent = 'Błąd podczas wysyłania, spróbuj ponownie.';
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      errorElement.textContent = 'Wystąpił błąd, spróbuj ponownie.';
+    } finally {
+      submitBtn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
